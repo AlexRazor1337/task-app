@@ -102,3 +102,6 @@ dist
 
 # TernJS port file
 .tern-port
+await.js
+prom.js
+prom2.js
