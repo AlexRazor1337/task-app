@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const bcrypt = require('bcryptjs');
 dotenv.config();
 
 require('./db/mongoose')
@@ -19,3 +20,16 @@ app.use(taskRouter);
 app.listen(port, () => {
     console.log('Server is up on port ' + port);
 });
+
+const myFunction = async () => {
+    const password = 'TestPass';
+    const hashed = await bcrypt.hash(password, 8);
+
+    console.log(password);
+    console.log(hashed);
+
+    const isMatch = await bcrypt.compare('TestPass', hashed)
+    console.log(isMatch);
+}
+
+myFunction()
