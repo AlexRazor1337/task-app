@@ -43,7 +43,13 @@ const userShema = new mongoose.Schema({
                 throw new Error('Age must be a postive number')
             }
         }
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 });
 
 userShema.statics.findByCredentials = async (email, password) => {
@@ -65,6 +71,9 @@ userShema.statics.findByCredentials = async (email, password) => {
 userShema.methods.generateAuthToken = async function () {
     const user = this;
     const token = jwt.sign({_id: user._id.toString()}, process.env.SECRET);
+
+    user.tokens = user.tokens.concat({token});
+    await user.save();
 
     return token;
 }
