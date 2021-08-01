@@ -78,6 +78,17 @@ userShema.methods.generateAuthToken = async function () {
     return token;
 }
 
+// TODO? Remake witwh mongoose-hidden or using .select
+userShema.methods.toJSON = function() {
+    const user = this.toObject();
+
+    delete user.password;
+    delete user.tokens;
+    delete user.__v;
+
+    return user;
+}
+
 // Hash the password
 userShema.pre('save', async function (next) {
     if (this.isModified('password')) {
