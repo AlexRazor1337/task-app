@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Task = require('./task');
 
-const userShema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -52,7 +53,13 @@ const userShema = new mongoose.Schema({
     }]
 });
 
-userShema.statics.findByCredentials = async (email, password) => {
+userSchema.virtual('tasks', {
+    ref: 'Task',
+    localField: '_id',
+    foreignField: 'user'
+})
+
+userSchema.statics.findByCredentials = async (email, password) => {
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -68,7 +75,7 @@ userShema.statics.findByCredentials = async (email, password) => {
     return user;
 }
 
-userShema.methods.generateAuthToken = async function () {
+userSchema.methods.generateAuthToken = async function () {
     const user = this;
     const token = jwt.sign({_id: user._id.toString()}, process.env.SECRET);
 
@@ -79,7 +86,7 @@ userShema.methods.generateAuthToken = async function () {
 }
 
 // TODO? Remake witwh mongoose-hidden or using .select
-userShema.methods.toJSON = function() {
+userSchema.methods.toJSON = function() {
     const user = this.toObject();
 
     delete user.password;
@@ -90,7 +97,7 @@ userShema.methods.toJSON = function() {
 }
 
 // Hash the password
-userShema.pre('save', async function (next) {
+userSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         this.password = await bcrypt.hash(this.password, 8);
     }
@@ -98,6 +105,12 @@ userShema.pre('save', async function (next) {
     next();
 })
 
-const User = mongoose.model('User', userShema);
+userSchema.pre('remove', async function(next) {
+    const user = this;
+    await Task.deleteMany({user: user._id});
+    next();
+})
+
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;
