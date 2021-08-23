@@ -1,22 +1,10 @@
 const express = require('express');
 const multer = require('multer');
+const sharp = require('sharp');
 const User = require('../models/user')
 const auth = require('../middleware/auth')
 
 const router = new express.Router();
-
-const upload = multer({
-    dest: 'avatars',
-    limits: {
-        fileSize: 1024 * 1024 // 1mb
-    },
-    fileFilter(req, file, cb) {
-        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-            cb(new Error('Wrong file extension'));
-        }
-        cb(undefined, true)
-    }
-});
 
 router.post('/users', async (req, res) => {
     const user = new User(req.body);
@@ -92,7 +80,6 @@ router.patch('/users/me', auth, async (req, res) => {
 
         res.send(user);
     } catch (e) {
-        console.log(e);
         res.status(500).send();
     }
 });
@@ -106,10 +93,51 @@ router.delete('/users/me', auth, async (req, res) => {
     }
 });
 
-router.post('/users/me/avatar', upload.single('avatar'), async (req, res) => {
+
+const upload = multer({
+    limits: {
+        fileSize: 1024 * 1024 // 1mb
+    },
+    fileFilter(req, file, cb) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            cb(new Error('Wrong file extension'));
+        }
+        cb(undefined, true)
+    }
+});
+
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+    const buffer = await sharp(req.file.buffer).resize({width: 256, height: 256}).png().toBuffer();
+    req.user.avatar = buffer;
+    await req.user.save();
     res.send();
 }, (err, req, res, next) => {
     res.status(400).send({error: err.message});
 });
+
+router.delete('/users/me/avatar', auth, async (req, res) => {
+    req.user.avatar = undefined;
+    try {
+        await req.user.save();
+        res.send();
+    } catch (e) {
+        res.status(500).send()
+    }
+})
+
+
+router.get('/users/:id/avatar', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user || !user.avatar) {
+            throw new Error();
+        }
+
+        res.set('Content-Type', 'image/png');
+        res.send(user.avatar)
+    } catch (e) {
+        res.status(404).send();
+    }
+})
 
 module.exports = router;
